@@ -62,9 +62,27 @@ class CarController extends Controller
             $query->where('transmission', $request->transmission);
         }
 
+        // Filter Min Price
+        if ($request->filled('min_price')) {
+            $query->where('price', '>=', $request->min_price);
+        }
+
         // Filter Max Price
         if ($request->filled('max_price')) {
             $query->where('price', '<=', $request->max_price);
+        }
+
+        // Filter Fuel Type
+        if ($request->filled('fuel_type')) {
+            $query->where('fuel_type', $request->fuel_type);
+        }
+
+        // Filter Year Range
+        if ($request->filled('min_year')) {
+            $query->where('manufacture_year', '>=', $request->min_year);
+        }
+        if ($request->filled('max_year')) {
+            $query->where('manufacture_year', '<=', $request->max_year);
         }
 
         // Filter City
@@ -79,6 +97,7 @@ class CarController extends Controller
             'price_high' => $query->orderBy('price', 'desc'),
             'mileage_low' => $query->orderBy('mileage_km', 'asc'),
             'year_high' => $query->orderBy('manufacture_year', 'desc'),
+            'year_low' => $query->orderBy('manufacture_year', 'asc'),
             default => $query->latest('published_at'),
         };
 

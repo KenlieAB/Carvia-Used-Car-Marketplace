@@ -3,44 +3,46 @@
 @section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-14">
 
-    <!-- 1. Hero Section -->
-    <div class="max-w-3xl mb-10">
-        <span class="inline-block text-xs font-extrabold tracking-widest uppercase text-slate-500 mb-3">
+    <!-- 1. Hero Section — full width -->
+    <div class="w-full mb-10">
+        <span class="inline-block text-xs font-extrabold tracking-widest uppercase text-blue-500 bg-blue-50 px-3 py-1 rounded-full mb-4">
             PEER-TO-PEER USED CAR MARKETPLACE
         </span>
-        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#0f1e36] tracking-tight leading-[1.15] mb-5">
-            Official-brand used cars, sold directly by private owners.
+        <h1 class="text-4xl sm:text-5xl xl:text-6xl font-extrabold text-[#0f1e36] tracking-tight leading-[1.1] mb-5">
+            Official-brand used cars,<br>
+            sold directly by<br>
+            <span class="text-blue-500">private owners.</span>
         </h1>
-        <p class="text-slate-600 text-base sm:text-lg leading-relaxed mb-8">
-            No dealership markups or middlemen. Anyone can publish a car listing in minutes, and buyers get the seller's direct phone and WhatsApp right inside every ad.
+        <p class="text-slate-500 text-base sm:text-lg leading-relaxed mb-8 max-w-3xl">
+            No dealership markups or middlemen. Anyone can publish a car listing in minutes, and buyers get the seller's direct WhatsApp inside every ad.
         </p>
 
-        <!-- Search Bar (Redirects to /cars) -->
-        <form action="{{ route('cars.index') }}" method="GET" class="relative flex items-center">
+        <!-- Search Bar — full width -->
+        <form action="{{ route('cars.index') }}" method="GET" class="relative flex items-center max-w-3xl mb-4">
             <div class="relative w-full">
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
                 </div>
-                <input type="text" 
-                       name="q" 
-                       placeholder="Search brand, model, or city (e.g. Fortuner, HR-V, Jakarta)..." 
-                       class="w-full pl-11 pr-36 py-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm text-sm sm:text-base text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0f1e36] focus:border-transparent transition">
+                <input type="text"
+                       name="q"
+                       placeholder="Cari merek, model, atau kota..."
+                       class="w-full pl-11 pr-36 py-4 rounded-2xl bg-white border border-slate-200 shadow-sm text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0f1e36] focus:border-transparent transition">
             </div>
-            <button type="submit" 
-                    class="absolute right-2 px-5 sm:px-7 py-2.5 sm:py-3 rounded-xl bg-[#0f1e36] hover:bg-[#1a2f50] text-white text-sm font-bold shadow transition active:scale-95">
-                Search Cars
+            <button type="submit"
+                    class="absolute right-2 px-5 sm:px-6 py-2.5 rounded-xl bg-[#0f1e36] hover:bg-[#1a2f50] text-white text-sm font-bold shadow transition active:scale-95">
+                Cari Mobil
             </button>
         </form>
 
         <!-- Popular Brands Pills -->
         @if($popularBrands->isNotEmpty())
-            <div class="flex flex-wrap items-center gap-2 mt-4 text-xs sm:text-sm text-slate-500">
-                <span class="font-medium">Popular brands:</span>
+            <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <span class="font-medium">Merek populer:</span>
                 @foreach($popularBrands as $brand)
-                    <a href="{{ route('cars.index', ['brand' => $brand->slug]) }}" 
-                       class="font-bold text-[#0f1e36] hover:text-blue-600 transition">
+                    <a href="{{ route('cars.index', ['brand' => $brand->slug]) }}"
+                       class="px-3 py-1 rounded-full bg-white border border-slate-200 font-semibold text-[#0f1e36] hover:bg-[#0f1e36] hover:text-white hover:border-[#0f1e36] transition text-xs">
                         {{ $brand->name }}
                     </a>
                 @endforeach
@@ -50,7 +52,7 @@
 
     <!-- 2. Featured Showcase Carousel -->
     @if($featuredCars->isNotEmpty())
-        <div class="relative rounded-3xl overflow-hidden shadow-sm border border-slate-200/80 bg-slate-900 aspect-[16/9] sm:aspect-[21/9] max-h-[520px] mb-8 group" id="featuredCarousel">
+        <div class="relative rounded-3xl overflow-hidden shadow-sm border border-slate-200/80 bg-slate-900 aspect-[16/9] sm:aspect-[21/9] max-h-[520px] mb-8" id="featuredCarousel">
             @foreach($featuredCars as $index => $car)
                 <div class="carousel-slide absolute inset-0 transition-opacity duration-700 ease-in-out {{ $index === 0 ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none' }}" 
                      data-index="{{ $index }}">
@@ -91,15 +93,15 @@
                 </div>
             @endforeach
 
-            <!-- Carousel Navigation Arrows -->
-            <button id="prevSlideBtn" type="button" 
-                    class="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-sm transition opacity-0 group-hover:opacity-100 focus:outline-none">
+            <!-- Carousel Navigation Arrows — always visible -->
+            <button id="prevSlideBtn" type="button"
+                    class="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm transition focus:outline-none">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path>
                 </svg>
             </button>
-            <button id="nextSlideBtn" type="button" 
-                    class="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-sm transition opacity-0 group-hover:opacity-100 focus:outline-none">
+            <button id="nextSlideBtn" type="button"
+                    class="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm transition focus:outline-none">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path>
                 </svg>

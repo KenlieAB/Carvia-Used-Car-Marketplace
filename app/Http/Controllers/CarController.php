@@ -137,10 +137,14 @@ class CarController extends Controller
      */
     public function create()
     {
-        $brands = Brand::with('carModels')->orderBy('name')->get();
-        $cities = City::orderBy('name')->get();
+        $brands = Brand::with(['carModels' => function ($q) {
+            $q->orderBy('name');
+        }])->orderBy('name')->get();
 
-        return view('cars.create', compact('brands', 'cities'));
+        $cities = City::orderBy('name')->get();
+        $features = \App\Models\Feature::orderBy('name')->get();
+
+        return view('cars.create', compact('brands', 'cities', 'features'));
     }
 
     /**
@@ -148,7 +152,121 @@ class CarController extends Controller
      */
     public function store(Request $request)
     {
-        // Akan diimplementasikan lengkap di Fase 6
-        return redirect()->route('cars.index')->with('success', 'Iklan berhasil dipasang!');
+        $validated = $request->validate([
+            // Identitas Mobil
+            'title' => 'required|string|max:200',
+            'car_model_id' => 'required|exists:car_models,id',
+            'city_id' => 'required|exists:cities,id',
+            'price' => 'required|numeric|min:1000000',
+            'price_negotiable' => 'boolean',
+            'description' => 'required|string|min:20',
+
+            // Tahun & Mesin
+            'manufacture_year' => 'required|integer|min:1980|max:'.(date('Y') + 1),
+            'registration_year' => 'required|integer|min:1980|max:'.(date('Y') + 1),
+            'transmission' => 'required|in:manual,automatic',
+            'fuel_type' => 'required|in:petrol,diesel,hybrid,electric',
+            'engine_cc' => 'required|integer|min:500|max:10000',
+            'color' => 'required|string|max:50',
+            'seats' => 'required|integer|min:2|max:20',
+
+            // Kilometer & Servis
+            'mileage_km' => 'required|integer|min:0',
+            'service_record' => 'required|in:authorized_dealer,specialist,self,none',
+            'has_service_book' => 'boolean',
+            'has_spare_key' => 'boolean',
+
+            // Legalitas & Surat
+            'bpkb_status' => 'required|in:on_hand,in_leasing',
+            'stnk_status' => 'required|in:available,lost',
+            'has_faktur' => 'boolean',
+            'has_form_a' => 'boolean',
+            'registration_type' => 'required|in:personal,company',
+            'owner_count' => 'required|integer|min:1|max:10',
+
+            // Pajak & Plat
+            'plate_region' => 'required|string|max:5',
+            'plate_type' => 'nullable|in:odd,even',
+            'tax_status' => 'required|in:active,expired',
+            'tax_expiry_date' => 'nullable|date',
+            'plate_expiry_year' => 'nullable|integer|min:'.date('Y').'|max:'.(date('Y') + 10),
+            'annual_tax_amount' => 'nullable|numeric|min:0',
+
+            // Kondisi Fisik
+            'is_accident_free' => 'boolean',
+            'is_flood_free' => 'boolean',
+            'modification_status' => 'required|in:stock,light_mod,full_mod',
+
+            // Relasi & Upload
+            'features' => 'nullable|array',
+            'features.*' => 'exists:features,id',
+            'images' => 'required|array|min:1|max:10',
+            'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120', // max 5MB per foto
+        ], [
+            'images.required' => 'Wajib mengunggah minimal 1 foto mobil.',
+            'images.min' => 'Wajib mengunggah minimal 1 foto mobil.',
+            'images.max' => 'Maksimal mengunggah 10 foto mobil.',
+            'title.required' => 'Judul iklan wajib diisi.',
+            'car_model_id.required' => 'Pilih model mobil yang sesuai.',
+            'city_id.required' => 'Pilih lokasi kota mobil.',
+            'price.required' => 'Harga wajib diisi.',
+            'description.required' => 'Deskripsi mobil wajib diisi.',
+        ]);
+
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $validated) {
+            // Generate unique slug
+            $baseSlug = \Illuminate\Support\Str::slug($request->title);
+            $slug = $baseSlug;
+            $count = 1;
+            while (Car::where('slug', $slug)->exists()) {
+                $slug = "{$baseSlug}-{$count}";
+                $count++;
+            }
+
+            // Siapkan data car
+            $carData = $validated;
+            $carData['user_id'] = auth()->id();
+            $carData['slug'] = $slug;
+            $carData['status'] = 'active'; // Langsung tayang (post-moderation)
+            $carData['view_count'] = 0;
+            $carData['published_at'] = now();
+            $carData['expired_at'] = now()->addDays(30);
+
+            // Boolean defaults
+            $carData['price_negotiable'] = $request->boolean('price_negotiable');
+            $carData['has_service_book'] = $request->boolean('has_service_book');
+            $carData['has_spare_key'] = $request->boolean('has_spare_key');
+            $carData['has_faktur'] = $request->boolean('has_faktur');
+            $carData['has_form_a'] = $request->boolean('has_form_a');
+            $carData['is_accident_free'] = $request->boolean('is_accident_free');
+            $carData['is_flood_free'] = $request->boolean('is_flood_free');
+
+            // Hapus field yang bukan kolom tabel cars
+            unset($carData['features'], $carData['images']);
+
+            $car = Car::create($carData);
+
+            // Simpan relasi features
+            if ($request->filled('features')) {
+                $car->features()->sync($request->features);
+            }
+
+            // Upload dan simpan images
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $index => $image) {
+                    $path = $image->store('cars', 'public');
+
+                    \App\Models\CarImage::create([
+                        'car_id' => $car->id,
+                        'path' => '/storage/' . $path,
+                        'is_primary' => $index === 0, // Foto pertama jadi foto utama
+                        'sort_order' => $index,
+                    ]);
+                }
+            }
+
+            return redirect()->route('cars.show', $car->slug)
+                ->with('success', 'Iklan mobil Anda berhasil diterbitkan dan langsung tayang!');
+        });
     }
 }

@@ -31,18 +31,18 @@ Route::get('/how-it-works', [PageController::class, 'howItWorks'])->name('how-it
 |--------------------------------------------------------------------------
 */
 
-// Car Detail — guests must login to see contact info
-Route::get('/cars/{slug}', [CarController::class, 'show'])
-    ->name('cars.show')
-    ->middleware('auth');
-
-// Post a Car — must be logged in
+// Post a Car — must be logged in (HARUS DI ATAS /cars/{slug})
 Route::get('/cars/create', [CarController::class, 'create'])
     ->name('cars.create')
     ->middleware('auth');
 
 Route::post('/cars', [CarController::class, 'store'])
     ->name('cars.store')
+    ->middleware('auth');
+
+// Car Detail — guests must login to see contact info
+Route::get('/cars/{slug}', [CarController::class, 'show'])
+    ->name('cars.show')
     ->middleware('auth');
 
 // My Ads / Garage

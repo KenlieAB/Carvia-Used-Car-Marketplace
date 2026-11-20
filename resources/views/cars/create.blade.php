@@ -8,10 +8,48 @@
          selectedModelId: '{{ old('car_model_id', '') }}',
          filteredModels: [],
          imagePreviews: [],
+         rawFiles: [],
+
+         // Formatted number inputs
+         rawPrice: '{{ old('price', '') }}',
+         displayPrice: '',
+         rawMileage: '{{ old('mileage_km', '') }}',
+         displayMileage: '',
+         rawTax: '{{ old('annual_tax_amount', '') }}',
+         displayTax: '',
 
          init() {
              if (this.selectedBrandId) {
                  this.updateModels();
+             }
+             if (this.rawPrice) {
+                 this.displayPrice = this.formatNumber(this.rawPrice);
+             }
+             if (this.rawMileage) {
+                 this.displayMileage = this.formatNumber(this.rawMileage);
+             }
+             if (this.rawTax) {
+                 this.displayTax = this.formatNumber(this.rawTax);
+             }
+         },
+
+         formatNumber(val) {
+             if (!val) return '';
+             const clean = val.toString().replace(/[^0-9]/g, '');
+             return clean.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+         },
+
+         onNumberInput(field, event) {
+             const clean = event.target.value.replace(/[^0-9]/g, '');
+             if (field === 'price') {
+                 this.rawPrice = clean;
+                 this.displayPrice = this.formatNumber(clean);
+             } else if (field === 'mileage') {
+                 this.rawMileage = clean;
+                 this.displayMileage = this.formatNumber(clean);
+             } else if (field === 'tax') {
+                 this.rawTax = clean;
+                 this.displayTax = this.formatNumber(clean);
              }
          },
 
@@ -24,21 +62,51 @@
          },
 
          handleFileSelect(event) {
-             const files = Array.from(event.target.files);
-             this.imagePreviews = [];
-             files.forEach((file, index) => {
+             const newFiles = Array.from(event.target.files);
+             if (newFiles.length === 0) return;
+
+             // Batasi total foto maksimal 10
+             if (this.rawFiles.length + newFiles.length > 10) {
+                 alert('Maksimal foto yang dapat diunggah adalah 10 foto.');
+                 return;
+             }
+
+             newFiles.forEach((file) => {
                  if (file.type.startsWith('image/')) {
+                     this.rawFiles.push(file);
                      const reader = new FileReader();
                      reader.onload = (e) => {
                          this.imagePreviews.push({
                              url: e.target.result,
-                             name: file.name,
-                             isPrimary: index === 0
+                             name: file.name
                          });
                      };
                      reader.readAsDataURL(file);
                  }
              });
+
+             this.syncInputFiles();
+         },
+
+         removeImage(index) {
+             this.rawFiles.splice(index, 1);
+             this.imagePreviews.splice(index, 1);
+             this.syncInputFiles();
+         },
+
+         setPrimary(index) {
+             if (index === 0) return;
+             const [file] = this.rawFiles.splice(index, 1);
+             const [preview] = this.imagePreviews.splice(index, 1);
+             this.rawFiles.unshift(file);
+             this.imagePreviews.unshift(preview);
+             this.syncInputFiles();
+         },
+
+         syncInputFiles() {
+             const dt = new DataTransfer();
+             this.rawFiles.forEach(file => dt.items.add(file));
+             this.$refs.fileInput.files = dt.files;
          }
      }">
 
@@ -276,12 +344,16 @@
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                         Odometer / KM <span class="text-rose-500">*</span>
                     </label>
-                    <input type="number" 
-                           name="mileage_km" 
-                           value="{{ old('mileage_km') }}" 
-                           placeholder="Contoh: 45000"
-                           required
-                           class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0f1e36]">
+                    <div class="relative">
+                        <input type="text" 
+                               inputmode="numeric"
+                               :value="displayMileage"
+                               @input="onNumberInput('mileage', $event)"
+                               placeholder="Contoh: 45.000"
+                               required
+                               class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0f1e36]">
+                        <input type="hidden" name="mileage_km" :value="rawMileage">
+                    </div>
                 </div>
 
                 <!-- Riwayat Servis -->
@@ -318,12 +390,14 @@
                     </label>
                     <div class="relative">
                         <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 font-bold text-sm">Rp</span>
-                        <input type="number" 
-                               name="price" 
-                               value="{{ old('price') }}" 
-                               placeholder="Contoh: 285000000"
+                        <input type="text" 
+                               inputmode="numeric"
+                               :value="displayPrice"
+                               @input="onNumberInput('price', $event)"
+                               placeholder="Contoh: 285.000.000"
                                required
                                class="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 text-sm font-bold text-[#0f1e36] focus:outline-none focus:ring-2 focus:ring-[#0f1e36]">
+                        <input type="hidden" name="price" :value="rawPrice">
                     </div>
                 </div>
 
@@ -404,40 +478,40 @@
             <div class="pt-4 border-t border-slate-100">
                 <span class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Kelengkapan Dokumen & Kondisi Utama</span>
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    <label class="flex items-center gap-2 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                        <input type="checkbox" name="has_service_book" value="1" {{ old('has_service_book') ? 'checked' : '' }}
-                               class="rounded text-[#0f1e36] focus:ring-[#0f1e36]">
+                    <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer transition">
+                        <input type="checkbox" name="has_service_book" value="1" {{ old('has_service_book', false) ? 'checked' : '' }}
+                               class="rounded text-[#0f1e36] focus:ring-[#0f1e36] border-slate-300">
                         <span class="text-xs font-semibold text-slate-700">📖 Buku Servis Ada</span>
                     </label>
 
-                    <label class="flex items-center gap-2 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                        <input type="checkbox" name="has_spare_key" value="1" {{ old('has_spare_key') ? 'checked' : '' }}
-                               class="rounded text-[#0f1e36] focus:ring-[#0f1e36]">
+                    <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer transition">
+                        <input type="checkbox" name="has_spare_key" value="1" {{ old('has_spare_key', false) ? 'checked' : '' }}
+                               class="rounded text-[#0f1e36] focus:ring-[#0f1e36] border-slate-300">
                         <span class="text-xs font-semibold text-slate-700">🔑 Kunci Serep Ada</span>
                     </label>
 
-                    <label class="flex items-center gap-2 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                        <input type="checkbox" name="has_faktur" value="1" {{ old('has_faktur', true) ? 'checked' : '' }}
-                               class="rounded text-[#0f1e36] focus:ring-[#0f1e36]">
+                    <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer transition">
+                        <input type="checkbox" name="has_faktur" value="1" {{ old('has_faktur', false) ? 'checked' : '' }}
+                               class="rounded text-[#0f1e36] focus:ring-[#0f1e36] border-slate-300">
                         <span class="text-xs font-semibold text-slate-700">📄 Faktur Pembelian Ada</span>
                     </label>
 
-                    <label class="flex items-center gap-2 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                        <input type="checkbox" name="has_form_a" value="1" {{ old('has_form_a') ? 'checked' : '' }}
-                               class="rounded text-[#0f1e36] focus:ring-[#0f1e36]">
+                    <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer transition">
+                        <input type="checkbox" name="has_form_a" value="1" {{ old('has_form_a', false) ? 'checked' : '' }}
+                               class="rounded text-[#0f1e36] focus:ring-[#0f1e36] border-slate-300">
                         <span class="text-xs font-semibold text-slate-700">📑 Form A (Khusus CBU)</span>
                     </label>
 
-                    <label class="flex items-center gap-2 p-3 rounded-xl border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50 cursor-pointer">
-                        <input type="checkbox" name="is_accident_free" value="1" {{ old('is_accident_free', true) ? 'checked' : '' }}
-                               class="rounded text-emerald-600 focus:ring-emerald-600">
-                        <span class="text-xs font-bold text-emerald-900">🛡️ Bebas Tabrakan Besar</span>
+                    <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer transition">
+                        <input type="checkbox" name="is_accident_free" value="1" {{ old('is_accident_free', false) ? 'checked' : '' }}
+                               class="rounded text-[#0f1e36] focus:ring-[#0f1e36] border-slate-300">
+                        <span class="text-xs font-semibold text-slate-700">🛡️ Bebas Tabrakan Besar</span>
                     </label>
 
-                    <label class="flex items-center gap-2 p-3 rounded-xl border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50 cursor-pointer">
-                        <input type="checkbox" name="is_flood_free" value="1" {{ old('is_flood_free', true) ? 'checked' : '' }}
-                               class="rounded text-emerald-600 focus:ring-emerald-600">
-                        <span class="text-xs font-bold text-emerald-900">🌊 Bebas Rendam Banjir</span>
+                    <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer transition">
+                        <input type="checkbox" name="is_flood_free" value="1" {{ old('is_flood_free', false) ? 'checked' : '' }}
+                               class="rounded text-[#0f1e36] focus:ring-[#0f1e36] border-slate-300">
+                        <span class="text-xs font-semibold text-slate-700">🌊 Bebas Rendam Banjir</span>
                     </label>
                 </div>
             </div>
@@ -522,11 +596,15 @@
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                         Estimasi Pajak PKB per Tahun (Rp)
                     </label>
-                    <input type="number" 
-                           name="annual_tax_amount" 
-                           value="{{ old('annual_tax_amount') }}" 
-                           placeholder="Contoh: 3500000"
-                           class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0f1e36]">
+                    <div class="relative">
+                        <input type="text" 
+                               inputmode="numeric"
+                               :value="displayTax"
+                               @input="onNumberInput('tax', $event)"
+                               placeholder="Contoh: 3.500.000"
+                               class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0f1e36]">
+                        <input type="hidden" name="annual_tax_amount" :value="rawTax">
+                    </div>
                 </div>
             </div>
         </div>
@@ -575,49 +653,73 @@
             <div class="border-b border-slate-100 pb-4">
                 <h2 class="text-lg font-extrabold text-[#0f1e36] tracking-tight flex items-center gap-2">
                     <span class="w-7 h-7 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xs font-black">6</span>
-                    Foto Kendaraan (Minimal 1 Foto)
+                    Foto Kendaraan (Minimal 1 Foto, Maksimal 10 Foto)
                 </h2>
-                <p class="text-xs text-slate-500 mt-1">Unggah foto eksterior depan, samping, belakang, interior, dan odometer.</p>
+                <p class="text-xs text-slate-500 mt-1">Unggah foto eksterior depan, samping, belakang, interior, dan odometer. Anda bisa mengunggah bertahap.</p>
             </div>
 
             <!-- Upload Input Dropzone -->
             <div>
-                <label class="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-slate-300 rounded-3xl cursor-pointer hover:border-[#0f1e36] hover:bg-slate-50/50 transition p-6 text-center">
-                    <div class="w-12 h-12 rounded-2xl bg-slate-100 text-[#0f1e36] flex items-center justify-center mb-3">
+                <label class="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-slate-300 rounded-3xl cursor-pointer hover:border-[#0f1e36] hover:bg-slate-50/50 transition p-6 text-center group">
+                    <div class="w-12 h-12 rounded-2xl bg-slate-100 group-hover:bg-blue-50 text-[#0f1e36] group-hover:text-blue-600 flex items-center justify-center mb-3 transition">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                         </svg>
                     </div>
-                    <span class="text-sm font-extrabold text-[#0f1e36]">Klik untuk Unggah Foto Mobil</span>
+                    <span class="text-sm font-extrabold text-[#0f1e36]">
+                        <span x-text="imagePreviews.length > 0 ? '+ Tambah Foto Mobil Lainnya' : 'Klik untuk Unggah Foto Mobil'"></span>
+                    </span>
                     <span class="text-xs text-slate-400 mt-1">Mendukung format JPG, PNG, WEBP (Maksimal 10 foto, masing-masing max 5MB)</span>
                     <input type="file" 
                            name="images[]" 
+                           x-ref="fileInput"
                            multiple 
                            accept="image/*"
-                           required
                            @change="handleFileSelect($event)"
                            class="hidden">
                 </label>
-                <p class="text-[11px] text-slate-500 mt-2">
-                    💡 <strong>Tips:</strong> Foto pertama yang Anda pilih akan menjadi <strong>foto cover utama</strong> iklan.
-                </p>
+                <div class="flex items-center justify-between text-[11px] text-slate-500 mt-2">
+                    <span>💡 <strong>Tips:</strong> Foto pertama dengan label <strong>FOTO UTAMA</strong> akan tampil sebagai sampul iklan.</span>
+                    <span x-text="imagePreviews.length + ' / 10 foto dipilih'" class="font-bold text-slate-700"></span>
+                </div>
             </div>
 
-            <!-- Image Previews Container -->
+            <!-- Image Previews Container with Actions -->
             <template x-if="imagePreviews.length > 0">
-                <div>
+                <div class="pt-2">
                     <span class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">
-                        Preview Foto Terpilih (<span x-text="imagePreviews.length"></span> Foto)
+                        Daftar Foto Terpilih (<span x-text="imagePreviews.length"></span> Foto)
                     </span>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
                         <template x-for="(preview, index) in imagePreviews" :key="index">
                             <div class="aspect-[4/3] rounded-2xl overflow-hidden relative border border-slate-200 bg-slate-100 group shadow-sm">
                                 <img :src="preview.url" :alt="preview.name" class="w-full h-full object-cover">
+                                
+                                <!-- Badge Foto Utama -->
                                 <template x-if="index === 0">
-                                    <span class="absolute top-2 left-2 bg-[#0f1e36] text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow">
-                                        FOTO UTAMA
+                                    <span class="absolute top-2 left-2 bg-[#0f1e36] text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow-md z-10">
+                                        ★ UTAMA
                                     </span>
                                 </template>
+
+                                <!-- Tombol Hapus Foto (✕) — Muncul saat di-hover -->
+                                <button type="button" 
+                                        @click="removeImage(index)"
+                                        title="Hapus Foto"
+                                        class="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 hover:bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold backdrop-blur-sm shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 z-10">
+                                    ✕
+                                </button>
+
+                                <!-- Action bar di bawah foto saat hover -->
+                                <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                    <template x-if="index !== 0">
+                                        <button type="button" 
+                                                @click="setPrimary(index)"
+                                                class="text-[10px] font-bold text-white bg-black/60 hover:bg-black/90 px-2 py-1 rounded-md border border-white/20 transition">
+                                            Jadikan Utama
+                                        </button>
+                                    </template>
+                                </div>
                             </div>
                         </template>
                     </div>

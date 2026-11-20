@@ -59,8 +59,33 @@ Route::middleware('auth')->group(function () {
     Route::delete('/cars/{slug}', [CarController::class, 'destroy'])->name('cars.destroy');
 });
 
+/*
+|--------------------------------------------------------------------------
+| Admin Routes (Protected by auth and admin middleware)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    // Overview
+    Route::get('/', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
 
+    // Car Moderation
+    Route::get('/cars', [\App\Http\Controllers\Admin\CarModerationController::class, 'index'])->name('cars.index');
+    Route::patch('/cars/{car}/reject', [\App\Http\Controllers\Admin\CarModerationController::class, 'reject'])->name('cars.reject');
+    Route::patch('/cars/{car}/restore', [\App\Http\Controllers\Admin\CarModerationController::class, 'restore'])->name('cars.restore');
+    Route::delete('/cars/{car}', [\App\Http\Controllers\Admin\CarModerationController::class, 'destroy'])->name('cars.destroy');
 
+    // Reports Management
+    Route::get('/reports', [\App\Http\Controllers\Admin\ReportController::class, 'index'])->name('reports.index');
+    Route::patch('/reports/{report}/resolve', [\App\Http\Controllers\Admin\ReportController::class, 'resolve'])->name('reports.resolve');
+    Route::patch('/reports/{report}/dismiss', [\App\Http\Controllers\Admin\ReportController::class, 'dismiss'])->name('reports.dismiss');
+
+    // Brands & Models Management
+    Route::get('/brands', [\App\Http\Controllers\Admin\BrandModelController::class, 'index'])->name('brands.index');
+    Route::post('/brands', [\App\Http\Controllers\Admin\BrandModelController::class, 'storeBrand'])->name('brands.store');
+    Route::delete('/brands/{brand}', [\App\Http\Controllers\Admin\BrandModelController::class, 'destroyBrand'])->name('brands.destroy');
+    Route::post('/models', [\App\Http\Controllers\Admin\BrandModelController::class, 'storeModel'])->name('models.store');
+    Route::delete('/models/{model}', [\App\Http\Controllers\Admin\BrandModelController::class, 'destroyModel'])->name('models.destroy');
+});
 /*
 |--------------------------------------------------------------------------
 | Breeze Profile Routes

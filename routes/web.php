@@ -50,6 +50,17 @@ Route::get('/my-ads', [PageController::class, 'myAds'])
     ->name('my-ads')
     ->middleware('auth');
 
+// Car Management (owner only)
+Route::middleware('auth')->group(function () {
+    Route::get('/cars/{slug}/edit', [CarController::class, 'edit'])->name('cars.edit');
+    Route::put('/cars/{slug}', [CarController::class, 'update'])->name('cars.update');
+    Route::patch('/cars/{slug}/sold', [CarController::class, 'markSold'])->name('cars.sold');
+    Route::patch('/cars/{slug}/extend', [CarController::class, 'extendExpiry'])->name('cars.extend');
+    Route::delete('/cars/{slug}', [CarController::class, 'destroy'])->name('cars.destroy');
+});
+
+
+
 /*
 |--------------------------------------------------------------------------
 | Breeze Profile Routes

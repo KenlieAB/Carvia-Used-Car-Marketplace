@@ -14,12 +14,20 @@ class PageController extends Controller
 
     public function myAds()
     {
-        // Placeholder untuk Garasi User (Fase 7)
-        // Ambil demo user pertama untuk preview
+        $userId = auth()->id();
+
         $userCars = Car::with(['carModel.brand', 'city', 'primaryImage'])
+            ->where('user_id', $userId)
             ->latest()
             ->paginate(10);
 
-        return view('pages.my-ads', compact('userCars'));
+        $stats = [
+            'active'  => Car::where('user_id', $userId)->where('status', 'active')->count(),
+            'sold'    => Car::where('user_id', $userId)->where('status', 'sold')->count(),
+            'expired' => Car::where('user_id', $userId)->where('status', 'expired')->count(),
+            'total'   => Car::where('user_id', $userId)->count(),
+        ];
+
+        return view('pages.my-ads', compact('userCars', 'stats'));
     }
 }
